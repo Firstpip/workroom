@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>퍼스트핍 워크룸</title>
+<!-- 홈 화면 앱 (아이폰: Safari 공유 → 홈 화면에 추가). 푸시 알림은 홈 화면 앱에서만 받을 수 있다 (iOS 16.4+) -->
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="워크룸" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="theme-color" content="#0f1117" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#f0f1f6" media="(prefers-color-scheme: light)" />
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<link rel="preconnect" href="https://ucwtmheysdrgrmeaubuy.supabase.co" crossorigin />
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet" />
+<script defer src="vendor/react.production.min.js" crossorigin></script>
+<script defer src="vendor/react-dom.production.min.js" crossorigin></script>
+<script defer src="vendor/supabase.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --space-1: 0.25rem; --space-2: 0.4rem;  --space-3: 0.5rem;
+    --space-4: 0.75rem; --space-5: 1rem;    --space-6: 1.5rem;
+    --radius-sm: 4px;   --radius-md: 6px;   --radius-lg: 8px;
+    --radius-xl: 12px;  --radius-pill: 20px;
+    --text-xs: 0.7rem;  --text-sm: 0.8rem;  --text-base: 0.85rem;
+    --text-md: 0.9rem;  --text-lg: 1rem;    --text-xl: 1.15rem; --text-2xl: 1.45rem;
+    /* surface tier: soft(10%) · mid(20%) · strong(33%) — color-mix 알파 표면 */
+    --surface-danger-soft:    color-mix(in srgb, var(--red)    10%, transparent);
+    --surface-danger-mid:     color-mix(in srgb, var(--red)    20%, transparent);
+    --surface-danger-strong:  color-mix(in srgb, var(--red)    33%, transparent);
+    --surface-warning-soft:   color-mix(in srgb, var(--yellow) 10%, transparent);
+    --surface-warning-mid:    color-mix(in srgb, var(--yellow) 20%, transparent);
+    --surface-warning-strong: color-mix(in srgb, var(--yellow) 33%, transparent);
+    --surface-success-soft:   color-mix(in srgb, var(--green)  10%, transparent);
+    --surface-success-mid:    color-mix(in srgb, var(--green)  20%, transparent);
+    --surface-success-strong: color-mix(in srgb, var(--green)  33%, transparent);
+    --surface-info-soft:      color-mix(in srgb, var(--blue)   10%, transparent);
+    --surface-info-mid:       color-mix(in srgb, var(--blue)   20%, transparent);
+    --surface-info-strong:    color-mix(in srgb, var(--blue)   33%, transparent);
+    --surface-accent-soft:    color-mix(in srgb, var(--accent) 10%, transparent);
+    --surface-accent-mid:     color-mix(in srgb, var(--accent) 20%, transparent);
+    --surface-accent-strong:  color-mix(in srgb, var(--accent) 33%, transparent);
+    --surface-neutral-soft:   color-mix(in srgb, #636e72        10%, transparent);
+    --surface-neutral-mid:    color-mix(in srgb, #636e72        20%, transparent);
+  }
+  :root, [data-theme="dark"] {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #242836;
+    --border: #2e3348; --text: #e4e6f0; --text2: #8b8fa8;
+    --accent: #6c5ce7; --accent2: #a29bfe;
+    --green: #00b894; --yellow: #fdcb6e; --red: #e17055; --blue: #74b9ff;
+    --shadow: rgba(0,0,0,0.4); --overlay: rgba(0,0,0,0.6); --color-scheme: dark;
+  }
+  [data-theme="light"] {
+    --bg: #f0f1f6; --surface: #ffffff; --surface2: #e9eaf1;
+    --border: #d0d2dc; --text: #1a1d2e; --text2: #4b5068;
+    --accent: #6c5ce7; --accent2: #5040c8;
+    --green: #059669; --yellow: #c47a10; --red: #dc2626; --blue: #2563eb;
+    --shadow: rgba(0,0,0,0.12); --overlay: rgba(0,0,0,0.35); --color-scheme: light;
+  }
+  html { font-size: 15px; color-scheme: var(--color-scheme); }
+  body { font-family: 'Pretendard', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.5; }
+  /* 워크룸 목록·캘린더가 같은 폭·여백 — 화면을 오갈 때 제목·탭이 튀지 않게 (2026-11-04, 전에는 1280 / 캘린더만 1760) */
+  #root { max-width: 1600px; margin: 0 auto; padding: 2rem 1.5rem; }
+  @media (min-width: 900px) { #root { padding: 0.9rem clamp(1rem, 2.2vw, 2rem) 1.5rem; } .app-top { padding-top: 0.5rem; } }  /* 캘린더 헤더(.fpcal .top 위 0.5rem)와 같은 높이 */
+  /* 폰: 제목은 숨기고 화면 탭을 맨 왼쪽에 — 캘린더 헤더와 같은 자리·높이 (캘린더는 자리가 없어 제목을 못 둔다) */
+  @media (max-width: 899px) { .app-top .app-brand-title { display: none !important; } .app-top { padding-top: calc(0.85rem + env(safe-area-inset-top, 0px)); } }
+  /* 좁은 PC 창(900~1199): 캘린더 헤더가 한 줄에 들어가도록 제목을 숨긴다 — 워크룸도 같이 (두 화면 탭 자리 같게) */
+  @media (min-width: 900px) and (max-width: 1199px) { .app-top .app-brand-title, .fpcal .top .app-brand-title { display: none !important; } }
+  @media (min-width: 900px) and (max-width: 1099px) { .app-top .um-name, .fpcal .top .um-name { display: none !important; } }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  /* input/select 의 color-scheme은 CSS 변수로 자동 적용 */
+  input, select, textarea { color-scheme: var(--color-scheme); }
+  /* 라이트 모드: 구분선 강화 + 반투명 배경 보정 */
+  [data-theme="light"] table tr { border-bottom-color: #c8cbda !important; }
+  [data-theme="light"] table thead tr { border-bottom: 2px solid #b8bcd0 !important; }
+  [data-theme="light"] table tr:hover { background: #e4e5ee !important; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+  .delay-1 { animation-delay: 0.05s; opacity: 0; }
+  .delay-2 { animation-delay: 0.1s; opacity: 0; }
+  .delay-3 { animation-delay: 0.15s; opacity: 0; }
+  .delay-4 { animation-delay: 0.2s; opacity: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(16px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+  /* 표 가로 스크롤 — overflow-x:auto 는 세로 스크롤포트까지 만들어 thead sticky 를 무력화한다.
+     넓은 화면에선 clip(세로 sticky 유지), 좁은 화면에서만 가로 스크롤 허용. */
+  .table-scroll { overflow-x: clip; }
+  @media (max-width: 900px) { .table-scroll { overflow-x: auto; } }
+  /* 미팅 일시 → 캘린더 그 날 (행 클릭과 구분되는 점선 밑줄 버튼) · 오늘 요약 카드 */
+  .cal-link { all: unset; cursor: pointer; color: inherit; text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); text-underline-offset: 3px; border-radius: 3px; }
+  .cal-link:hover { text-decoration-style: solid; }
+  .cal-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .cal-today { transition: border-color .15s; }
+  .cal-today:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)) !important; }
+  .cal-today:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* 가로 스크롤 칩 행 (모바일 필터) — 스크롤바 숨김, 자식은 줄바꿈 없이 */
+  .hscroll { display:flex; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:2px; }
+  .hscroll::-webkit-scrollbar { display:none; }
+  .hscroll > * { flex:0 0 auto; white-space:nowrap; }
+  @media (max-width: 768px) {
+    html { font-size: 14px; }
+    #root { padding: 1rem 0.75rem calc(1rem + env(safe-area-inset-bottom)); }
+    table th, table td { padding: 0.5rem 0.5rem !important; }
+    /* 641~768px(태블릿 세로): 예산(4), 생성일(5), 메모(8) 숨김 — 미팅일·담당은 유지. 640px 이하는 카드 목록으로 전환됨 */
+    table td:nth-child(4), table th:nth-child(4),
+    table td:nth-child(5), table th:nth-child(5),
+    table td:nth-child(8), table th:nth-child(8) { display: none; }
+  }
+  @media (max-width: 640px) {
+    /* iOS Safari 는 16px 미만 입력에 포커스하면 화면을 자동 확대함 → 모바일에선 입력 글꼴 16px 고정 */
+    input, select, textarea { font-size: 16px !important; }
+    /* iOS 의 date/time 입력은 width 를 무시하고 내용 폭으로 늘어나 시트에 가로 스크롤을 만든다 → 폭 강제 */
+    input[type="date"], input[type="time"], input[type="datetime-local"] {
+      -webkit-appearance: none; appearance: none; display: block; width: 100%; min-width: 0; max-width: 100%;
+      box-sizing: border-box; -webkit-min-logical-width: 0; }
+    [role="dialog"] { overflow-x: hidden; }
+    /* 모달 → 바텀시트: 전체 폭, 위쪽만 둥글게, 홈 인디케이터 영역 확보 */
+    div:has(> [role="dialog"]) { align-items: flex-end !important; padding: 0 !important; }
+    [role="dialog"] { width: 100% !important; max-width: 100% !important; border-radius: 16px 16px 0 0 !important;
+      max-height: 94dvh !important; padding-bottom: env(safe-area-inset-bottom); animation: slideUp 0.22s ease-out !important; }
+    /* 탭 하이라이트 제거 + 터치 스크롤 관성 */
+    * { -webkit-tap-highlight-color: transparent; }
+    /* 토스트는 하단 안전영역 위로 */
+    .toast-container { bottom: calc(1rem + env(safe-area-inset-bottom)) !important; left: 0.75rem !important; right: 0.75rem !important; }
+  }
+</style>
+<script>
+// 테마 초기화 (FOUC 방지 — 앱 스크립트보다 먼저 동기 실행)
+(function() {
+  var saved = localStorage.getItem('dashboard_theme');
+  var prefer = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', saved || prefer);
+})();
+</script>
+<!-- app.js 는 src/app.jsx 를 esbuild로 빌드한 산출물. 코드 수정은 src/app.jsx 에서 → `npm run build` (또는 `npm run watch`) → app.js 커밋. -->
+<script src="app.js" defer></script>
+</head>
+<body>
+<div id="root"></div>
+</body>
+</html>
